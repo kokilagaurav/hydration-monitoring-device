@@ -263,6 +263,55 @@
       min-height: 18px;
       text-align: center;
     }
+    #hydrationTracker {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 15px 0;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .water-progress {
+      width: 100%;
+      height: 20px;
+      background: #e0eafc;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    .water-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4CAF50, #43e97b);
+      transition: width 0.3s ease;
+      border-radius: 10px;
+    }
+    .water-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin: 15px 0;
+    }
+    .water-btn {
+      padding: 8px 15px;
+      border-radius: 20px;
+      border: none;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .water-btn:hover {
+      transform: scale(1.05);
+    }
+    .motivation-smiley {
+      font-size: 2em;
+      margin: 10px 0;
+      animation: bounce 1s ease infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
   </style>
 </head>
 <body>
@@ -362,6 +411,20 @@
         <div id="hydrationStatus">Status: --</div>
         <div id="alarmMsg"></div>
         <div id="notifyMsg"></div>
+        <div id="hydrationTracker">
+          <h3>Daily Water Intake</h3>
+          <div class="water-progress">
+            <div class="water-fill" style="width: 0%"></div>
+          </div>
+          <div id="waterAmount">0 / 2000 ml</div>
+          <div class="motivation-smiley" id="motivationSmiley">😊</div>
+          <div class="water-actions">
+            <button class="water-btn" onclick="addWater(100)">🥤 100ml</button>
+            <button class="water-btn" onclick="addWater(200)">🥤 200ml</button>
+            <button class="water-btn" onclick="addWater(300)">🥤 300ml</button>
+            <button class="water-btn" onclick="resetWater()">↺ Reset</button>
+          </div>
+        </div>
         <canvas id="hydrationGraph" width="300" height="120"></canvas>
       </div>
     </div>
@@ -840,6 +903,7 @@
           registerError.textContent = data.error || "Registration failed.";
         }
       } catch (e) {
+        console.error("Registration error:", e);
         registerError.textContent = "Server error.";
       }
     });
@@ -866,6 +930,7 @@
           loginError.textContent = data.error || "Invalid username or password.";
         }
       } catch (e) {
+        console.error("Login error:", e);
         loginError.textContent = "Server error.";
       }
     });
@@ -932,20 +997,25 @@
         activityLevel: profileActivity.value,
         hydrationGoal: parseInt(profileGoal.value)
       };
-      const res = await fetch(`${BACKEND_URL}/profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: currentUser, profile, newUsername })
-      });
-      const data = await res.json();
-      if (data.success) {
-        profileMsg.textContent = 'Profile saved!';
-        if (newUsername && newUsername !== currentUser) {
-          currentUser = newUsername;
+      try {
+        const res = await fetch(`${BACKEND_URL}/profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: currentUser, profile, newUsername })
+        });
+        const data = await res.json();
+        if (data.success) {
+          profileMsg.textContent = 'Profile saved!';
+          if (newUsername && newUsername !== currentUser) {
+            currentUser = newUsername;
+          }
+          setTimeout(()=>profileMsg.textContent='', 1500);
+        } else {
+          profileMsg.textContent = 'Error saving profile.';
         }
-        setTimeout(()=>profileMsg.textContent='', 1500);
-      } else {
-        profileMsg.textContent = 'Error saving profile.';
+      } catch (e) {
+        console.error("Profile save error:", e);
+        profileMsg.textContent = 'Server error.';
       }
     });
 
@@ -991,6 +1061,84 @@
       await fetchUserProfile();
       logoutBtn.style.display = '';
     }
+
+    // Water intake tracking
+    let waterIntake = 0;
+    const DEFAULT_GOAL = 2000; // 2L default goal
+
+    function addWater(amount) {
+      waterIntake += amount;
+      updateWaterUI();
+      saveWaterIntake();
+    }
+
+    function resetWater() {
+      waterIntake = 0;
+      updateWaterUI();
+      saveWaterIntake();
+    }
+
+    function updateWaterUI() {
+      const goal = parseInt(profileGoal.value) || DEFAULT_GOAL;
+      const percent = Math.min((waterIntake / goal) * 100, 100);
+      
+      document.querySelector('.water-fill').style.width = `${percent}%`;
+      document.getElementById('waterAmount').textContent = 
+        `${waterIntake} / ${goal} ml`;
+      
+      // Update motivation smiley
+      const smiley = document.getElementById('motivationSmiley');
+      if (percent < 25) {
+        smiley.textContent = '🙂';
+      } else if (percent < 50) {
+        smiley.textContent = '😊';
+      } else if (percent < 75) {
+        smiley.textContent = '😄';
+      } else if (percent < 100) {
+        smiley.textContent = '🤗';
+      } else {
+        smiley.textContent = '🌟';
+      }
+    }
+
+    async function saveWaterIntake() {
+      if (!currentUser) return;
+      try {
+        await fetch(`${BACKEND_URL}/water-intake`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: currentUser,
+            intake: waterIntake,
+            date: new Date().toISOString().split('T')[0]
+          })
+        });
+      } catch (e) {
+        console.error('Error saving water intake:', e);
+      }
+    }
+
+    // Modify afterLogin function to load water intake
+    const originalAfterLogin = afterLogin;
+    afterLogin = async function() {
+      await originalAfterLogin();
+      // Load water intake
+      if (currentUser) {
+        try {
+          const res = await fetch(`${BACKEND_URL}/water-intake/${currentUser}`);
+          const data = await res.json();
+          if (data.intake) {
+            waterIntake = data.intake;
+            updateWaterUI();
+          }
+        } catch (e) {
+          console.error('Error loading water intake:', e);
+        }
+      }
+    };
+
+    // Update water UI when profile goal changes
+    profileGoal.addEventListener('change', updateWaterUI);
   </script>
 </body>
 </html>
