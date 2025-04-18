@@ -294,8 +294,9 @@
   <button id="settingsBtn" style="margin-top:16px;">⚙️ Settings</button>
   <button id="logoutBtn" style="margin-top:8px;display:none;">🚪 Logout</button>
   <div id="settingsPanel" style="display:none;margin:20px 0;padding:16px 0;text-align:center;background:#f7fafc;border-radius:12px;box-shadow:0 2px 8px #0001;">
-    <h3 id="profileHeader">Username</h3>
+    <h3 id="profileHeader">Profile</h3>
     <form id="profileForm" style="display:inline-block;text-align:left;">
+      <label>Username: <input type="text" id="profileUsername" style="width:140px;"></label><br>
       <label>Age: <input type="number" id="profileAge" min="1" max="120" style="width:60px;"></label><br>
       <label>Weight (kg): <input type="number" id="profileWeight" min="1" max="300" style="width:60px;"></label><br>
       <label>Gender:
@@ -894,6 +895,7 @@
 
     // --- User Profile UI ---
     const profileForm = document.getElementById('profileForm');
+    const profileUsername = document.getElementById('profileUsername');
     const profileAge = document.getElementById('profileAge');
     const profileWeight = document.getElementById('profileWeight');
     const profileActivity = document.getElementById('profileActivity');
@@ -909,18 +911,20 @@
       const res = await fetch(`${BACKEND_URL}/hydration/${currentUser}`);
       const data = await res.json();
       if (data && data.profile) {
+        profileUsername.value = currentUser;
         profileAge.value = data.profile.age || '';
         profileWeight.value = data.profile.weight || '';
         profileActivity.value = data.profile.activityLevel || 'Low';
         profileGoal.value = data.profile.hydrationGoal || '';
         profileGender.value = data.profile.gender || 'Male';
       }
-      profileHeader.textContent = currentUser;
+      profileHeader.textContent = 'Profile';
     }
 
     profileForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       if (!currentUser) return;
+      const newUsername = profileUsername.value.trim();
       const profile = {
         age: parseInt(profileAge.value),
         weight: parseFloat(profileWeight.value),
@@ -931,11 +935,14 @@
       const res = await fetch(`${BACKEND_URL}/profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: currentUser, profile })
+        body: JSON.stringify({ username: currentUser, profile, newUsername })
       });
       const data = await res.json();
       if (data.success) {
         profileMsg.textContent = 'Profile saved!';
+        if (newUsername && newUsername !== currentUser) {
+          currentUser = newUsername;
+        }
         setTimeout(()=>profileMsg.textContent='', 1500);
       } else {
         profileMsg.textContent = 'Error saving profile.';
@@ -987,4 +994,5 @@
   </script>
 </body>
 </html>
+``` 
 
