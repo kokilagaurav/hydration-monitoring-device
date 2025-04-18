@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bluetooth Sensor Data</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 24px;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 8px #fff8;
+    }
+    #sensorData {
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px #0001;
+      padding: 32px 40px;
+      margin-top: 32px;
+      min-width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      align-items: flex-start;
+      transition: box-shadow 0.2s;
+    }
+    #sensorData:hover {
+      box-shadow: 0 8px 32px #0002;
+    }
+    .sensor-value {
+      font-size: 1.18rem;
+      color: #222;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #f7fafc;
+      border-radius: 8px;
+      padding: 10px 18px;
+      min-width: 260px;
+      box-shadow: 0 1px 4px #0001;
+    }
+    .sensor-icon {
+      font-size: 1.4em;
+      color: #4CAF50;
+      width: 28px;
+      text-align: center;
+    }
+    button {
+      padding: 12px 32px;
+      font-size: 1.1rem;
+      background: linear-gradient(90deg, #4CAF50 60%, #43e97b 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 2px 8px #4caf5040;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+      margin-top: 8px;
+      letter-spacing: 0.5px;
+    }
+    button:disabled {
+      background: #bdbdbd;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    button:hover:not(:disabled) {
+      background: linear-gradient(90deg, #43e97b 60%, #38f9d7 100%);
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 4px 16px #43e97b40;
+    }
+    @media (max-width: 500px) {
+      #sensorData {
+        padding: 18px 8px;
+        min-width: unset;
+      }
+      .sensor-value {
+        min-width: unset;
+        font-size: 1rem;
+        padding: 8px 8px;
+      }
+    }
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin: 32px 0 12px 0;
+      color: #2d7a5f;
+      letter-spacing: 0.5px;
+    }
+    #fetchedData {
+      background: #f9f9fb;
+      border-radius: 14px;
+      box-shadow: 0 2px 8px #0001;
+      padding: 18px 24px;
+      margin-top: 12px;
+      min-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    #dashboard {
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px #0001;
+      padding: 28px 32px;
+      margin-top: 32px;
+      min-width: 340px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      position: relative;
+    }
+    #hydrationStatus {
+      font-size: 1.25rem;
+      font-weight: 700;
+      padding: 10px 18px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      color: #fff;
+      background: #4CAF50;
+      box-shadow: 0 1px 4px #0001;
+      transition: background 0.2s;
+    }
+    #hydrationStatus.dehydrated {
+      background: #e53935;
+      animation: shake 0.3s 2;
+    }
+    #hydrationStatus.mild {
+      background: #ffb300;
+      color: #222;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      50% { transform: translateX(4px); }
+      75% { transform: translateX(-4px); }
+      100% { transform: translateX(0); }
+    }
+    #alarmMsg, #notifyMsg {
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin-top: 10px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      display: none;
+      width: 100%;
+      text-align: center;
+    }
+    #alarmMsg {
+      background: #ffebee;
+      color: #b71c1c;
+      border: 1px solid #e53935;
+      box-shadow: 0 2px 8px #e5393520;
+    }
+    #notifyMsg {
+      background: #fffde7;
+      color: #ff6f00;
+      border: 1px solid #ffb300;
+      box-shadow: 0 2px 8px #ffb30020;
+    }
+    #hydrationGraph {
+      margin-top: 18px;
+      background: #f7fafc;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px #0001;
+    }
+    .switch-btn-group {
+      display: flex;
+      gap: 10px;
+      margin: 18px 0 0 0;
+      width: 100%;
+      justify-content: center;
+    }
+    .switch-btn {
+      padding: 10px 24px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px 8px 0 0;
+      background: #e0eafc;
+      color: #2d7a5f;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      outline: none;
+    }
+    .switch-btn.active {
+      background: #4CAF50;
+      color: #fff;
+      box-shadow: 0 2px 8px #4caf5040;
+    }
+    .login-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(220,230,245,0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .login-box {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 32px #0002;
+      padding: 36px 32px 28px 32px;
+      min-width: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+    .login-box h2 {
+      margin: 0 0 12px 0;
+      color: #2d7a5f;
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .login-box input {
+      width: 220px;
+      padding: 10px 12px;
+      border-radius: 7px;
+      border: 1px solid #b0bec5;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .login-box input:focus {
+      border: 1.5px solid #4CAF50;
+    }
+    .login-box button {
+      width: 100%;
+      padding: 10px 0;
+      font-size: 1.1rem;
+      border-radius: 7px;
+      border: none;
+      background: linear-gradient(90deg, #4CAF50 60%, #43e97b 100%);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .login-box button:hover {
+      background: linear-gradient(90deg, #43e97b 60%, #38f9d7 100%);
+    }
+    .login-error {
+      color: #e53935;
+      font-size: 0.98rem;
+      margin-top: 2px;
+      min-height: 18px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="loginOverlay" class="login-overlay">
+    <form class="login-box" id="loginForm" autocomplete="off" onsubmit="return false;">
+      <h2>Login to Hydration Monitor</h2>
+      <input type="text" id="loginUser" placeholder="Username" required autocomplete="username" />
+      <input type="password" id="loginPass" placeholder="Password" required autocomplete="current-password" />
+      <!-- Demo credentials (replace with real authentication in production)
+           Username: user
+           Password: pass
+      -->
+      <div class="login-error" id="loginError"></div>
+      <button type="submit">Login</button>
+      <button type="button" id="showRegisterBtn" style="margin-top:0;background:#e0eafc;color:#2d7a5f;">Create Account</button>
+    </form>
+    <form class="login-box" id="registerForm" autocomplete="off" style="display:none;" onsubmit="return false;">
+      <h2>Create Account</h2>
+      <input type="text" id="registerUser" placeholder="New Username" required autocomplete="username" />
+      <input type="password" id="registerPass" placeholder="New Password" required autocomplete="new-password" />
+      <div class="login-error" id="registerError"></div>
+      <button type="submit">Register</button>
+      <button type="button" id="showLoginBtn" style="margin-top:0;background:#e0eafc;color:#2d7a5f;">Back to Login</button>
+    </form>
+  </div>
+  <h1>Bluetooth Sensor Data</h1>
+  <div id="connectionStatus" style="font-size:1.1rem;margin:8px 0 0 0;color:#2d7a5f;font-weight:600;">Status: Disconnected</div>
+  <button id="connectButton">Connect to Device</button>
+  <button id="settingsBtn" style="margin-top:16px;">⚙️ Settings</button>
+  <button id="logoutBtn" style="margin-top:8px;display:none;">🚪 Logout</button>
+  <div id="settingsPanel" style="display:none;margin:20px 0;padding:16px 0;text-align:center;background:#f7fafc;border-radius:12px;box-shadow:0 2px 8px #0001;">
+    <h3 id="profileHeader">Username</h3>
+    <form id="profileForm" style="display:inline-block;text-align:left;">
+      <label>Age: <input type="number" id="profileAge" min="1" max="120" style="width:60px;"></label><br>
+      <label>Weight (kg): <input type="number" id="profileWeight" min="1" max="300" style="width:60px;"></label><br>
+      <label>Gender:
+        <select id="profileGender">
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+      </label><br>
+      <label>Activity Level:
+        <select id="profileActivity">
+          <option value="Low">Low</option>
+          <option value="Moderate">Moderate</option>
+          <option value="High">High</option>
+        </select>
+      </label><br>
+      <label>Hydration Goal (ml): <input type="number" id="profileGoal" min="500" max="10000" step="100" style="width:80px;"></label><br>
+      <button type="submit">Save Profile</button>
+      <span id="profileMsg" style="margin-left:10px;color:#4CAF50;"></span>
+    </form>
+    <div style="margin:12px 0;">
+      <label>Profile Photo: <input type="file" id="profilePhotoInput" accept="image/*" style="margin-left:8px;"></label>
+      <br>
+      <img id="profilePhotoPreview" src="" alt="Profile Photo" style="display:none;margin-top:8px;width:80px;height:80px;border-radius:50%;object-fit:cover;box-shadow:0 2px 8px #0002;">
+    </div>
+    <hr style="margin:18px 0;">
+    <div></div>
+      <button id="darkModeToggle" title="Toggle dark mode">🌙 Dark Mode</button>
+      <button id="exportCsvBtn" title="Export hydration data as CSV">⬇️ Export CSV</button>
+      <button id="shareReportBtn" title="Share hydration report">🔗 Share Report</button>
+    </div>
+    <div id="badgeSection" style="margin:12px 0 0 0;text-align:center;">
+      <span id="badgePerfect" style="display:none;background:#4CAF50;color:#fff;padding:6px 14px;border-radius:16px;margin:0 6px;">🏅 Perfect Hydration!</span>
+      <span id="badgeGood" style="display:none;background:#ffb300;color:#222;padding:6px 14px;border-radius:16px;margin:0 6px;">🥈 Good Hydration!</span>
+    </div>
+    <div id="gamification" style="margin:10px 0 0 0;padding:10px 0 0 0;width:100%;text-align:center;">
+      <span id="streaks">Streak: 0 days</span> | <span id="achievements">Achievements: None</span>
+    </div>
+    <div id="batteryStatus" style="margin:10px 0 0 0;font-size:1rem;color:#2d7a5f;font-weight:500;">Device Battery: --</div>
+    <div id="reminderSection" style="margin:10px 0 0 0;width:100%;text-align:center;">
+      <button id="setReminderBtn">Set Hydration Reminder</button>
+      <span id="reminderMsg" style="margin-left:10px;color:#4CAF50;"></span>
+    </div>
+  </div>
+  <div id="sensorData">
+    <div class="switch-btn-group">
+      <button id="btnFetched" class="switch-btn active">Fetched Data</button>
+      <button id="btnDashboard" class="switch-btn">Dashboard</button>
+    </div>
+    <div id="fetchedSection">
+      <div class="section-title">Fetched Data</div>
+      <div id="fetchedData">
+        <div id="fetchedIr">IR Value: --</div>
+        <div id="fetchedGsr">GSR: --</div>
+        <div id="fetchedAccel">Accelerometer: --</div>
+        <div id="fetchedGyro">Gyroscope: --</div>
+        <div id="fetchedMag">Magnetometer: --</div>
+      </div>
+    </div>
+    <div id="dashboardSection" style="display:none;">
+      <div class="section-title">Dashboard</div>
+      <div id="dashboard">
+        <div id="hydrationStatus">Status: --</div>
+        <div id="alarmMsg"></div>
+        <div id="notifyMsg"></div>
+        <canvas id="hydrationGraph" width="300" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Define the BLE service and characteristics UUIDs
+    const sensorServiceUUID = '12345678-1234-5678-1234-56789abcdef0';
+    const irCharacteristicUUID = '12345678-1234-5678-1234-56789abcdef5';
+    const gsrCharacteristicUUID = '12345678-1234-5678-1234-56789abcdef1';
+    const accelCharacteristicUUID = '12345678-1234-5678-1234-56789abcdef2';
+    const gyroCharacteristicUUID = '12345678-1234-5678-1234-56789abcdef3';
+    const magCharacteristicUUID = '12345678-1234-5678-1234-56789abcdef4';
+
+    let connectedDevice = null;
+    let sensorService = null;
+
+    const connectionStatus = document.getElementById('connectionStatus');
+    const connectButton = document.getElementById('connectButton');
+
+    // --- Backend integration variables ---
+    let currentUser = null;
+    const BACKEND_URL = 'http://localhost:4000/api';
+
+    // Connect button click event
+    connectButton.addEventListener('click', async () => {
+      try {
+        connectButton.textContent = "Connecting...";
+        connectButton.disabled = true;
+        connectionStatus.textContent = "Status: Connecting...";
+        // Request Bluetooth device
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ services: [sensorServiceUUID] }],
+          optionalServices: [sensorServiceUUID]
+        });
+
+        connectedDevice = device;
+        connectedDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+        await connectToDevice(device);
+
+        connectButton.textContent = "Connected";
+        connectionStatus.textContent = "Status: Connected";
+        connectButton.disabled = true;
+      } catch (error) {
+        connectButton.textContent = "Connect to Device";
+        connectButton.disabled = false;
+        connectionStatus.textContent = "Status: Disconnected";
+        console.error('Error connecting to Bluetooth device: ', error);
+      }
+    });
+
+    function onDisconnected() {
+      connectionStatus.textContent = "Status: Disconnected";
+      connectButton.textContent = "Connect to Device";
+      connectButton.disabled = false;
+    }
+
+    async function connectToDevice(device) {
+      try {
+        const server = await device.gatt.connect();
+        sensorService = await server.getPrimaryService(sensorServiceUUID);
+
+        // Get characteristics for IR, GSR, Accel, Gyro, and Mag
+        const irCharacteristic = await sensorService.getCharacteristic(irCharacteristicUUID);
+        const gsrCharacteristic = await sensorService.getCharacteristic(gsrCharacteristicUUID);
+        const accelCharacteristic = await sensorService.getCharacteristic(accelCharacteristicUUID);
+        const gyroCharacteristic = await sensorService.getCharacteristic(gyroCharacteristicUUID);
+        const magCharacteristic = await sensorService.getCharacteristic(magCharacteristicUUID);
+
+        // Start reading values
+        readSensorData(irCharacteristic, gsrCharacteristic, accelCharacteristic, gyroCharacteristic, magCharacteristic);
+      } catch (error) {
+        connectionStatus.textContent = "Status: Disconnected";
+        connectButton.textContent = "Connect to Device";
+        connectButton.disabled = false;
+        console.error('Error getting services or characteristics: ', error);
+      }
+    }
+
+    // Function to update sensor value UI
+    function updateSensorValue(id, label, value) {
+      const el = document.getElementById(id);
+      if (el && el.children.length > 1) {
+        el.children[1].textContent = `${label}: ${value}`;
+      }
+    }
+
+    // Hydration status history for graph
+    const hydrationHistory = [];
+    const maxHistory = 30; // last 30 readings
+
+    // Hydration status logic based on GSR value
+    function getHydrationStatus(gsr) {
+      // Example thresholds (customize as needed)
+      if (gsr < 0.5) return 'dehydrated';
+      if (gsr < 1.2) return 'mild';
+      return 'hydrated';
+    }
+
+    function updateDashboard(gsr) {
+      const statusDiv = document.getElementById('hydrationStatus');
+      const alarmMsg = document.getElementById('alarmMsg');
+      const notifyMsg = document.getElementById('notifyMsg');
+      let status = getHydrationStatus(gsr);
+
+      // Update status text and style
+      if (status === 'dehydrated') {
+        statusDiv.textContent = 'Status: Dehydrated';
+        statusDiv.className = 'dehydrated';
+        alarmMsg.style.display = 'block';
+        alarmMsg.textContent = 'Please visit a doctor, you are dehydrated!';
+        notifyMsg.style.display = 'none';
+        // Optionally play a sound
+        playAlarm();
+      } else if (status === 'mild') {
+        statusDiv.textContent = 'Status: Mildly Dehydrated';
+        statusDiv.className = 'mild';
+        alarmMsg.style.display = 'none';
+        notifyMsg.style.display = 'block';
+        notifyMsg.textContent = 'Please drink some water with electrolytes, you are mildly dehydrated.';
+        // Optionally show browser notification
+        showNotification();
+      } else {
+        statusDiv.textContent = 'Status: Hydrated';
+        statusDiv.className = '';
+        alarmMsg.style.display = 'none';
+        notifyMsg.style.display = 'none';
+      }
+      // Add to history and update graph
+      hydrationHistory.push(status);
+      if (hydrationHistory.length > maxHistory) hydrationHistory.shift();
+      drawHydrationGraph();
+    }
+
+    function drawHydrationGraph() {
+      const canvas = document.getElementById('hydrationGraph');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw axes
+      ctx.strokeStyle = '#bbb';
+      ctx.beginPath();
+      ctx.moveTo(30, 10);
+      ctx.lineTo(30, 110);
+      ctx.lineTo(290, 110);
+      ctx.stroke();
+
+      // Draw labels
+      ctx.fillStyle = '#333';
+      ctx.font = '12px Segoe UI';
+      ctx.fillText('Dehydrated', 2, 30);
+      ctx.fillText('Mild', 2, 65);
+      ctx.fillText('Hydrated', 2, 100);
+
+      // Draw status line
+      for (let i = 0; i < hydrationHistory.length; i++) {
+        let y;
+        if (hydrationHistory[i] === 'dehydrated') y = 30;
+        else if (hydrationHistory[i] === 'mild') y = 65;
+        else y = 100;
+        ctx.beginPath();
+        ctx.arc(35 + i * 8, y, 5, 0, 2 * Math.PI);
+        ctx.fillStyle =
+          hydrationHistory[i] === 'dehydrated'
+            ? '#e53935'
+            : hydrationHistory[i] === 'mild'
+            ? '#ffb300'
+            : '#4CAF50';
+        ctx.fill();
+      }
+    }
+
+    function playAlarm() {
+      // Simple beep using Web Audio API
+      if (!window._alarmPlaying) {
+        window._alarmPlaying = true;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 880;
+        g.gain.value = 0.2;
+        o.connect(g).connect(ctx.destination);
+        o.start();
+        setTimeout(() => {
+          o.stop();
+          ctx.close();
+          window._alarmPlaying = false;
+        }, 600);
+      }
+    }
+
+    function showNotification() {
+      if (window.Notification && Notification.permission === "granted") {
+        new Notification("Hydration Alert", {
+          body: "Please drink some water with electrolytes, you are mildly dehydrated.",
+        });
+      } else if (window.Notification && Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
+    }
+
+    // Update fetched data section
+    function updateFetchedData(ir, gsr, accel, gyro, mag) {
+      document.getElementById('fetchedIr').textContent = 'IR Value: ' + ir;
+      document.getElementById('fetchedGsr').textContent = 'GSR: ' + gsr;
+      document.getElementById('fetchedAccel').textContent = 'Accelerometer: ' + accel;
+      document.getElementById('fetchedGyro').textContent = 'Gyroscope: ' + gyro;
+      document.getElementById('fetchedMag').textContent = 'Magnetometer: ' + mag;
+    }
+
+    async function readSensorData(irCharacteristic, gsrCharacteristic, accelCharacteristic, gyroCharacteristic, magCharacteristic) {
+      try {
+        setInterval(async () => {
+          const irValue = await irCharacteristic.readValue();
+          const gsrValue = await gsrCharacteristic.readValue();
+          const accelValue = await accelCharacteristic.readValue();
+          const gyroValue = await gyroCharacteristic.readValue();
+          const magValue = await magCharacteristic.readValue();
+
+          const ir = irValue.getFloat32(0, true).toFixed(2);
+          const gsr = gsrValue.getFloat32(0, true).toFixed(2);
+          const accel = accelValue.getFloat32(0, true).toFixed(2);
+          const gyro = gyroValue.getFloat32(0, true).toFixed(2);
+          const mag = magValue.getFloat32(0, true).toFixed(2);
+
+          // Update fetched data section
+          updateFetchedData(ir, gsr, accel, gyro, mag);
+
+          // Update dashboard (hydration status based on GSR)
+          updateDashboard(parseFloat(gsr));
+
+          // Optionally, update the original sensor-value UI if you want to keep it
+          // updateSensorValue('irValue', 'IR Value', ir);
+          // updateSensorValue('gsrValue', 'GSR', gsr);
+          // updateSensorValue('accelValue', 'Accelerometer', accel);
+          // updateSensorValue('gyroValue', 'Gyroscope', gyro);
+          // updateSensorValue('magValue', 'Magnetometer', mag);
+        }, 200);
+      } catch (error) {
+        console.error('Error reading sensor data: ', error);
+      }
+    }
+
+    // Section switching logic
+    const btnFetched = document.getElementById('btnFetched');
+    const btnDashboard = document.getElementById('btnDashboard');
+    const fetchedSection = document.getElementById('fetchedSection');
+    const dashboardSection = document.getElementById('dashboardSection');
+
+    btnFetched.addEventListener('click', () => {
+      btnFetched.classList.add('active');
+      btnDashboard.classList.remove('active');
+      fetchedSection.style.display = '';
+      dashboardSection.style.display = 'none';
+    });
+
+    btnDashboard.addEventListener('click', () => {
+      btnDashboard.classList.add('active');
+      btnFetched.classList.remove('active');
+      dashboardSection.style.display = '';
+      fetchedSection.style.display = 'none';
+    });
+
+    // Settings panel logic
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsPanel = document.getElementById('settingsPanel');
+    settingsBtn.addEventListener('click', function() {
+      settingsPanel.style.display = settingsPanel.style.display === 'none' ? '' : 'none';
+    });
+
+    // Dark mode toggle
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    darkModeToggle.addEventListener('click', function() {
+      document.body.classList.toggle('dark-mode');
+      if(document.body.classList.contains('dark-mode')) {
+        document.body.style.background = '#222';
+        document.body.style.color = '#eee';
+        darkModeToggle.textContent = '☀️ Light Mode';
+      } else {
+        document.body.style.background = '';
+        document.body.style.color = '';
+        darkModeToggle.textContent = '🌙 Dark Mode';
+      }
+    });
+
+    // Export hydration data as CSV
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    exportCsvBtn.addEventListener('click', async function() {
+      if (!currentUser) return alert('Login required!');
+      const res = await fetch(`${BACKEND_URL}/export/${currentUser}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'hydration_history.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // Share hydration report (copy to clipboard)
+    const shareReportBtn = document.getElementById('shareReportBtn');
+    shareReportBtn.addEventListener('click', async function() {
+      if (!currentUser) return alert('Login required!');
+      const res = await fetch(`${BACKEND_URL}/share/${currentUser}`);
+      const data = await res.json();
+      let report = `Hydration Report for ${data.username}\nLast Status: ${data.lastStatus}\nStreak: ${data.streak}\nAchievements: ${data.achievements}`;
+      navigator.clipboard.writeText(report).then(() => {
+        shareReportBtn.textContent = '✅ Copied!';
+        setTimeout(()=>shareReportBtn.textContent='🔗 Share Report', 1200);
+      });
+    });
+
+    // Gamification: streaks and achievements
+    let streak = 0;
+    let achievements = [];
+    function updateGamification() {
+      // Streak: consecutive hydrated statuses
+      streak = 0;
+      for(let i=hydrationHistory.length-1; i>=0; i--) {
+        if(hydrationHistory[i]==='hydrated') streak++;
+        else break;
+      }
+      document.getElementById('streaks').textContent = `Streak: ${streak} day${streak!==1?'s':''}`;
+      achievements = [];
+      if(streak>=3) achievements.push('3-day Streak');
+      if(hydrationHistory.filter(s=>s==='hydrated').length>=10) achievements.push('10x Hydrated');
+      document.getElementById('achievements').textContent = 'Achievements: ' + (achievements.length?achievements.join(', '):'None');
+    }
+    // Call updateGamification after updating hydrationHistory
+    const origUpdateDashboard = updateDashboard;
+    updateDashboard = function(gsr) {
+      origUpdateDashboard(gsr);
+      updateGamification();
+    }
+
+    // --- Save hydration data to backend ---
+    async function saveHydrationToBackend(status, gsr, ir, accel, gyro, mag) {
+      if (!currentUser) return;
+      await fetch(`${BACKEND_URL}/hydration`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: currentUser,
+          hydration: { status, gsr, ir, accel, gyro, mag }
+        })
+      });
+    }
+
+    // --- Fetch hydration analytics (history, streaks, achievements) ---
+    async function fetchHydrationAnalytics() {
+      if (!currentUser) return;
+      const res = await fetch(`${BACKEND_URL}/hydration/${currentUser}`);
+      const data = await res.json();
+      if (data.hydrationHistory) {
+        hydrationHistory.length = 0;
+        data.hydrationHistory.forEach(h => hydrationHistory.push(h.status));
+        updateGamification();
+      }
+      // Optionally show streaks/achievements in UI
+      document.getElementById('streaks').textContent = `Streak: ${data.streak || 0} day${data.streak!==1?'s':''}`;
+      document.getElementById('achievements').textContent = 'Achievements: ' + (data.achievements && data.achievements.length ? data.achievements.join(', ') : 'None');
+    }
+
+    // --- Save hydration data to backend when updating dashboard ---
+    const origUpdateDashboard2 = updateDashboard;
+    updateDashboard = function(gsr) {
+      origUpdateDashboard2(gsr);
+      // Save to backend
+      if (typeof ir !== 'undefined' && typeof accel !== 'undefined' && typeof gyro !== 'undefined' && typeof mag !== 'undefined') {
+        const status = getHydrationStatus(gsr);
+        saveHydrationToBackend(status, gsr, ir, accel, gyro, mag);
+      }
+    }
+
+    // Device battery monitoring (Web Bluetooth Battery Service if available)
+    async function updateBatteryStatus() {
+      if(connectedDevice && connectedDevice.gatt) {
+        try {
+          const batteryService = await connectedDevice.gatt.getPrimaryService('battery_service');
+          const batteryLevelChar = await batteryService.getCharacteristic('battery_level');
+          const batteryLevel = await batteryLevelChar.readValue();
+          const percent = batteryLevel.getUint8(0);
+          document.getElementById('batteryStatus').textContent = `Device Battery: ${percent}%`;
+        } catch(e) {
+          document.getElementById('batteryStatus').textContent = 'Device Battery: N/A';
+        }
+      }
+    }
+    setInterval(updateBatteryStatus, 10000);
+
+    // Reminders & notifications
+    const setReminderBtn = document.getElementById('setReminderBtn');
+    const reminderMsg = document.getElementById('reminderMsg');
+    let reminderTimeout = null;
+    setReminderBtn.addEventListener('click', function() {
+      const mins = prompt('Remind me to drink water in how many minutes?', '60');
+      if(mins && !isNaN(mins) && mins>0) {
+        if(reminderTimeout) clearTimeout(reminderTimeout);
+        reminderTimeout = setTimeout(()=>{
+          alert('Hydration Reminder: Time to drink water!');
+          reminderMsg.textContent = '';
+        }, mins*60000);
+        reminderMsg.textContent = `Reminder set for ${mins} min(s)`;
+      } else {
+        reminderMsg.textContent = 'Invalid input.';
+        setTimeout(()=>reminderMsg.textContent='', 1500);
+      }
+    });
+
+    // Simple login logic
+    const loginOverlay = document.getElementById('loginOverlay');
+    const loginForm = document.getElementById('loginForm');
+    const loginUser = document.getElementById('loginUser');
+    const loginPass = document.getElementById('loginPass');
+    const loginError = document.getElementById('loginError');
+
+    // Registration logic
+    const registerForm = document.getElementById('registerForm');
+    const registerUser = document.getElementById('registerUser');
+    const registerPass = document.getElementById('registerPass');
+    const registerError = document.getElementById('registerError');
+    const showRegisterBtn = document.getElementById('showRegisterBtn');
+    const showLoginBtn = document.getElementById('showLoginBtn');
+
+    // Demo credentials (replace with real authentication in production)
+    const DEMO_USER = "user";
+    const DEMO_PASS = "pass";
+
+    // Switch to register form
+    showRegisterBtn.addEventListener('click', function() {
+      loginForm.style.display = "none";
+      registerForm.style.display = "flex";
+      loginError.textContent = "";
+      loginUser.value = "";
+      loginPass.value = "";
+    });
+
+    // Switch back to login form
+    showLoginBtn.addEventListener('click', function() {
+      registerForm.style.display = "none";
+      loginForm.style.display = "flex";
+      registerError.textContent = "";
+      registerUser.value = "";
+      registerPass.value = "";
+    });
+
+    // Register new account
+    registerForm.addEventListener('submit', async function() {
+      const user = registerUser.value.trim();
+      const pass = registerPass.value;
+      if (!user || !pass) {
+        registerError.textContent = "Please enter username and password.";
+        return;
+      }
+      try {
+        const res = await fetch(`${BACKEND_URL}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+        if (data.success) {
+          registerError.textContent = "Account created! Please login.";
+          setTimeout(() => {
+            registerForm.style.display = "none";
+            loginForm.style.display = "flex";
+            registerError.textContent = "";
+            registerUser.value = "";
+            registerPass.value = "";
+          }, 1000);
+        } else {
+          registerError.textContent = data.error || "Registration failed.";
+        }
+      } catch (e) {
+        registerError.textContent = "Server error.";
+      }
+    });
+
+    // Login logic
+    loginForm.addEventListener('submit', async function() {
+      const user = loginUser.value.trim();
+      const pass = loginPass.value;
+      try {
+        const res = await fetch(`${BACKEND_URL}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+        if (data.success) {
+          loginOverlay.style.display = "none";
+          currentUser = user;
+          loginUser.value = "";
+          loginPass.value = "";
+          loginError.textContent = "";
+          afterLogin();
+        } else {
+          loginError.textContent = data.error || "Invalid username or password.";
+        }
+      } catch (e) {
+        loginError.textContent = "Server error.";
+      }
+    });
+
+    // Optionally allow Enter key to submit
+    loginForm.addEventListener('keydown', function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        loginForm.dispatchEvent(new Event('submit'));
+      }
+    });
+    registerForm.addEventListener('keydown', function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        registerForm.dispatchEvent(new Event('submit'));
+      }
+    });
+
+    // Logout logic
+    const logoutBtn = document.getElementById('logoutBtn');
+    logoutBtn.addEventListener('click', function() {
+      currentUser = null;
+      loginOverlay.style.display = "flex";
+      settingsPanel.style.display = 'none';
+      logoutBtn.style.display = 'none';
+    });
+
+    // --- User Profile UI ---
+    const profileForm = document.getElementById('profileForm');
+    const profileAge = document.getElementById('profileAge');
+    const profileWeight = document.getElementById('profileWeight');
+    const profileActivity = document.getElementById('profileActivity');
+    const profileGoal = document.getElementById('profileGoal');
+    const profileMsg = document.getElementById('profileMsg');
+    const profilePhotoInput = document.getElementById('profilePhotoInput');
+    const profilePhotoPreview = document.getElementById('profilePhotoPreview');
+    const profileGender = document.getElementById('profileGender');
+    const profileHeader = document.getElementById('profileHeader');
+
+    async function fetchUserProfile() {
+      if (!currentUser) return;
+      const res = await fetch(`${BACKEND_URL}/hydration/${currentUser}`);
+      const data = await res.json();
+      if (data && data.profile) {
+        profileAge.value = data.profile.age || '';
+        profileWeight.value = data.profile.weight || '';
+        profileActivity.value = data.profile.activityLevel || 'Low';
+        profileGoal.value = data.profile.hydrationGoal || '';
+        profileGender.value = data.profile.gender || 'Male';
+      }
+      profileHeader.textContent = currentUser;
+    }
+
+    profileForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      if (!currentUser) return;
+      const profile = {
+        age: parseInt(profileAge.value),
+        weight: parseFloat(profileWeight.value),
+        gender: profileGender.value,
+        activityLevel: profileActivity.value,
+        hydrationGoal: parseInt(profileGoal.value)
+      };
+      const res = await fetch(`${BACKEND_URL}/profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: currentUser, profile })
+      });
+      const data = await res.json();
+      if (data.success) {
+        profileMsg.textContent = 'Profile saved!';
+        setTimeout(()=>profileMsg.textContent='', 1500);
+      } else {
+        profileMsg.textContent = 'Error saving profile.';
+      }
+    });
+
+    // Profile photo upload and preview
+    profilePhotoInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          profilePhotoPreview.src = evt.target.result;
+          profilePhotoPreview.style.display = '';
+          // Optionally, save base64 to backend with profile (not implemented here)
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Badge logic for hydration goal
+    function updateBadges() {
+      const badgePerfect = document.getElementById('badgePerfect');
+      const badgeGood = document.getElementById('badgeGood');
+      badgePerfect.style.display = 'none';
+      badgeGood.style.display = 'none';
+      if (!currentUser || !profileGoal.value) return;
+      // Count hydrated statuses in history
+      const hydratedCount = hydrationHistory.filter(s => s === 'hydrated').length;
+      const percent = Math.round((hydratedCount / profileGoal.value) * 100);
+      if (percent >= 100) badgePerfect.style.display = '';
+      else if (percent >= 50) badgeGood.style.display = '';
+    }
+
+    // Call updateBadges after updating hydrationHistory or profileGoal
+    const origUpdateGamification = updateGamification;
+    updateGamification = function() {
+      origUpdateGamification();
+      updateBadges();
+    }
+    profileGoal.addEventListener('input', updateBadges);
+
+    // Fetch profile after login
+    async function afterLogin() {
+      fetchHydrationAnalytics();
+      await fetchUserProfile();
+      logoutBtn.style.display = '';
+    }
+  </script>
+</body>
+</html>
+
